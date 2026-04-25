@@ -1,0 +1,785 @@
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --bg:         #F5F0E8;
+  --card-bg:    #211f1b;
+  --num-color:  rgba(53, 48, 39, 0.52);
+  --logo-color: #211f1b;
+  --radius:     0.13vw;   /* 8px at 1x 1440px (scales with layout) */
+
+  /*
+   * --sq = 1 background grid square
+   *
+   * Source: DesignBidKan.svg  (2880 × 1800 canvas)
+   * Grid step measured in SVG: 60.76px  →  2880 / 60.76 = 47.39 squares wide
+   * Background PNG is exactly 2880 × 1800.
+   * background-size: cover on landscape viewport scales by viewport width.
+   * ∴  1 square = 100vw / 47.39 ≈ 2.110vw
+   *
+   * Cards (in squares):
+   *   col 1 (card-1)  :  7 sq wide
+   *   col 2 (card-2)  : 12 sq wide
+   *   col 3 (right)   :  9 sq wide
+   *   gap             :  1 sq
+   *   total width     : 30 sq  =  63.3vw
+   *
+   *   row 1 (cards 1+2): 15 sq tall
+   *   row gap           :  1 sq
+   *   row 2 (card 3)    :  6 sq tall
+   *   total height      : 22 sq  =  46.4vw
+   *
+   *   logo font-size    :  2.29 sq
+   *   logo padding-top  :  2.59 sq  (from right-col top)
+   *   card number size  :  3.31 sq
+   *
+   * NOTE: the grid is NOT perfectly square.
+   *   x step (from SVG cross markers): 60.76 px  →  2880 / 60.76 = 47.39 sq wide
+   *   y step (from SVG cross markers): 60.41 px  →  1800 / 60.41 = 29.80 sq tall
+   * background-size uses 29.80 (not 29.63) so y-dots land on --sq intervals.
+   */
+  --sq: min(2.110vw, 4.0vh);   /* vh cap: grid stays ≤ 88vh, never clips */
+}
+
+/* ── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Base ──────────────────────────────────────────────────────── */
+html, body {
+  min-height: 100dvh;
+  background-color: var(--bg);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  overflow-x: hidden;
+  color: var(--logo-color);
+}
+
+/* ── Page centering ────────────────────────────────────────────── */
+.page-wrapper {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Scene Artboard ────────────────────────────────────────────── */
+/* Locks background, logo, and grid into a single scaled coordinate system */
+.scene {
+  position: relative;
+  width: calc(47.39 * var(--sq));
+  height: calc(29.63 * var(--sq));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scene-background {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/background.png');
+  background-size: 100% 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Logo overlay ──────────────────────────────────────────────── */
+/*
+  DesignBidKan_LOGO.png is the same 2880 × 1800 canvas as background.png
+  but RGBA — transparent everywhere except the dark logo text.
+  Sizing it to calc(47.39 * --sq) wide and centering it aligns the logo
+  to its exact designed position over the background grid.
+*/
+.page-logo {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+}
+
+/* ── Bento grid ─────────────────────────────────────────────────── */
+.bento-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: calc(30 * var(--sq));               /* 30 squares = 63.3vw  */
+  grid-template-columns: 7fr 12fr 9fr;       /* 7 : 12 : 9 squares   */
+  grid-template-rows:
+    calc(15 * var(--sq))                     /* row 1 — 15 squares   */
+    calc(6  * var(--sq));                    /* row 2 —  6 squares   */
+  gap: var(--sq);                            /* 1 square gap         */
+}
+
+/* Grid placement */
+.card-1    { grid-column: 1;     grid-row: 1; }
+.card-2    { grid-column: 2;     grid-row: 1; }
+.right-col { grid-column: 3;     grid-row: 1 / 3; }
+.card-3    { grid-column: 1 / 3; grid-row: 2; }
+
+/* ── Dark cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--card-bg);
+  border-radius: calc(0.23 * var(--sq));   /* ≈ 7px at 1440px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Placeholder numbers (matching SVG st7: 200.95px / 60.76 = 3.31 sq) */
+.card-num {
+  font-family: var(--font-bebas, 'Bebas Neue', sans-serif);
+  font-size: calc(3.31 * var(--sq));
+  color: var(--num-color);
+  line-height: 1;
+  user-select: none;
+  letter-spacing: 0.02em;
+}
+
+/* ── Expandable cards area ────────────────────────────────────── */
+/* Wrapper that occupies the two-column × two-row footprint of cards 1+2+3 */
+.cards-area {
+  grid-column: 1 / 3;
+  grid-row: 1 / 3;
+  position: relative;
+  display: grid;
+  grid-template-columns: 7fr 12fr;       /* mirrors parent: cols 1 and 2    */
+  grid-template-rows: calc(15 * var(--sq)) calc(6 * var(--sq)); /* mirrors parent */
+  gap: var(--sq);
+}
+
+/* Cards inside the area keep their natural positions */
+.cards-area .card-1 { grid-column: 1; grid-row: 1; }
+.cards-area .card-2 { grid-column: 2; grid-row: 1; }
+.cards-area .card-3-inner { grid-column: 1 / 3; grid-row: 2; }
+
+/* The overlay: positioned absolute, sits on top of everything, animated by JS */
+.expandable-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+/* Close (X) button — visible only when card is expanded */
+.close-btn {
+  position: absolute;
+  top: calc(1 * var(--sq));
+  right: calc(1 * var(--sq));
+  width: calc(1.2 * var(--sq));
+  height: calc(1.2 * var(--sq));
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  color: rgba(255,255,255,0.7);
+  z-index: 20;
+}
+
+.close-btn:hover {
+  background: rgba(255,255,255,0.18);
+  transform: scale(1.1);
+}
+
+.close-btn svg {
+  width: calc(0.5 * var(--sq));
+  height: calc(0.5 * var(--sq));
+}
+
+/* ── Right column ──────────────────────────────────────────────── */
+/* Card 4 sits at the bottom; logo is a separate absolute overlay */
+.right-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* ── Auth Buttons ──────────────────────────────────────────────── */
+.auth-grid {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: calc(1 * var(--sq));
+  margin-bottom: calc(4 * var(--sq)); /* Exact integer to perfectly align with vertical background grid */
+  width: 100%;
+}
+
+.auth-btn {
+  background: var(--card-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  color: var(--num-color);
+}
+
+.auth-btn:hover {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.auth-icon-btn {
+  width: calc(1 * var(--sq));
+  height: calc(1 * var(--sq));
+  flex-shrink: 0;
+}
+
+.auth-icon-btn svg {
+  height: calc(0.5 * var(--sq));
+  width: auto;
+  color: #ffffff;
+}
+
+/* Distinctive primary button (Sign Up) */
+.auth-primary {
+  color: var(--bg);
+  background: var(--num-color);
+}
+
+/* Card 4 — 9 × 9 squares → aspect-ratio: 1, width fills right col */
+.card-4 {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  background: var(--card-bg);
+  border-radius: calc(0.23 * var(--sq));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-4 .card-num {
+  font-size: calc(2.8 * var(--sq));
+}
+
+/* ── Prospect Finder ───────────────────────────────────────────── */
+.prospect-finder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.6 * var(--sq));
+  padding: calc(1.2 * var(--sq));
+  overflow-y: auto;
+  color: rgba(255,255,255,0.85);
+}
+
+.prospect-header {
+  display: flex;
+  align-items: center;
+  gap: calc(0.5 * var(--sq));
+}
+
+.prospect-title-main {
+  font-family: var(--font-bebas, 'Bebas Neue', sans-serif);
+  font-size: calc(1.8 * var(--sq));
+  color: rgba(255,255,255,0.9);
+  line-height: 1;
+}
+
+.prospect-tier-badge {
+  font-size: calc(0.3 * var(--sq));
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.6);
+}
+
+.prospect-subtitle {
+  font-size: calc(0.35 * var(--sq));
+  color: rgba(255,255,255,0.4);
+  margin-top: calc(-0.3 * var(--sq));
+}
+
+.prospect-form {
+  display: flex;
+  gap: calc(0.4 * var(--sq));
+}
+
+.prospect-input {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: calc(0.18 * var(--sq));
+  padding: calc(0.35 * var(--sq)) calc(0.5 * var(--sq));
+  font-size: calc(0.35 * var(--sq));
+  color: rgba(255,255,255,0.85);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.prospect-input::placeholder { color: rgba(255,255,255,0.25); }
+.prospect-input:focus { border-color: rgba(255,255,255,0.3); }
+
+.prospect-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: calc(0.18 * var(--sq));
+  padding: calc(0.35 * var(--sq)) calc(0.6 * var(--sq));
+  font-size: calc(0.32 * var(--sq));
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+.prospect-btn:hover { background: rgba(255,255,255,0.2); }
+.prospect-btn:disabled { opacity: 0.5; cursor: default; }
+
+.prospect-error {
+  font-size: calc(0.32 * var(--sq));
+  color: #f87171;
+}
+
+.prospect-empty {
+  font-size: calc(0.33 * var(--sq));
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  padding: calc(1 * var(--sq)) 0;
+}
+
+/* Results */
+.prospect-results {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.5 * var(--sq));
+}
+
+.prospect-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: calc(0.18 * var(--sq));
+  padding: calc(0.6 * var(--sq));
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.35 * var(--sq));
+}
+
+.prospect-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(0.4 * var(--sq));
+}
+
+.prospect-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prospect-name {
+  font-size: calc(0.38 * var(--sq));
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+}
+
+.prospect-title {
+  font-size: calc(0.3 * var(--sq));
+  color: rgba(255,255,255,0.45);
+}
+
+.prospect-company {
+  display: flex;
+  align-items: center;
+  gap: calc(0.3 * var(--sq));
+}
+
+.prospect-company-name {
+  font-size: calc(0.34 * var(--sq));
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+}
+
+.prospect-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.2 * var(--sq));
+}
+
+.prospect-enrichment {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.2 * var(--sq));
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: calc(0.3 * var(--sq));
+}
+
+.prospect-contact-row {
+  display: flex;
+  align-items: center;
+  gap: calc(0.3 * var(--sq));
+  font-size: calc(0.3 * var(--sq));
+  color: rgba(255,255,255,0.65);
+}
+
+.prospect-tags-row {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(0.3 * var(--sq));
+  font-size: calc(0.3 * var(--sq));
+}
+
+.prospect-label {
+  min-width: calc(1.8 * var(--sq));
+  color: rgba(255,255,255,0.3);
+  font-size: calc(0.27 * var(--sq));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.prospect-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.prospect-tag {
+  font-size: calc(0.26 * var(--sq));
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 999px;
+  color: rgba(255,255,255,0.5);
+}
+
+.prospect-link {
+  color: rgba(255,255,255,0.5);
+  text-decoration: underline;
+  font-size: calc(0.3 * var(--sq));
+}
+
+.prospect-reason {
+  font-size: calc(0.3 * var(--sq));
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: calc(0.25 * var(--sq));
+}
+
+/* Score badge */
+.prospect-score {
+  font-size: calc(0.32 * var(--sq));
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.score-high { background: rgba(74,222,128,0.15); color: #4ade80; }
+.score-mid  { background: rgba(250,204,21,0.15);  color: #facc15; }
+.score-low  { background: rgba(248,113,113,0.15); color: #f87171; }
+
+/* Blur effect for locked fields */
+.prospect-blur {
+  filter: blur(5px);
+  user-select: none;
+  pointer-events: none;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Skeleton loader */
+.prospect-skeleton { opacity: 0.4; }
+.skeleton-line {
+  height: calc(0.35 * var(--sq));
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.skeleton-wide   { width: 80%; }
+.skeleton-medium { width: 55%; }
+.skeleton-narrow { width: 35%; }
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* Upgrade banner */
+.prospect-upgrade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--sq));
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: calc(0.18 * var(--sq));
+  padding: calc(0.5 * var(--sq)) calc(0.7 * var(--sq));
+  font-size: calc(0.3 * var(--sq));
+  color: rgba(255,255,255,0.5);
+}
+
+.prospect-upgrade-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: calc(0.15 * var(--sq));
+  padding: calc(0.2 * var(--sq)) calc(0.5 * var(--sq));
+  font-size: calc(0.28 * var(--sq));
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+.prospect-upgrade-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE  (≤ 600px)
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  :root { --sq: 4.5vw; }   /* tighter square for small screens */
+
+  .page-wrapper {
+    padding: 40px 0;
+    align-items: flex-start;
+  }
+
+  .bento-layout {
+    width: calc(100vw - 24px);
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+  }
+
+  /* Right col becomes a flex container on mobile */
+  .right-col {
+    grid-column: 1 / 3;
+    grid-row: 1;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0;
+    height: auto;
+    gap: 10px;
+  }
+  .card-4          { width: clamp(60px, 20vw, 100px); aspect-ratio: 1; flex-shrink: 0; align-self: flex-end; }
+  .card-4 .card-num { font-size: 24px; }
+  
+  .auth-grid {
+    flex: 1;
+    gap: 10px;
+    align-self: center;
+    justify-content: center;
+    margin-bottom: 0;
+  }
+
+  /* Cards row */
+  .card-1  { grid-column: 1; grid-row: 2; height: 170px; }
+  .card-2  { grid-column: 2; grid-row: 2; height: 170px; }
+  .card-num { font-size: clamp(36px, 11vw, 60px); }
+
+  /* Bottom strip */
+  .card-3  { grid-column: 1 / 3; grid-row: 3; height: 72px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AUTH MODAL
+══════════════════════════════════════════════════════════════════ */
+.auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: backdropIn 0.2s ease;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.auth-modal {
+  background: var(--card-bg);
+  border-radius: calc(0.5 * var(--sq));
+  padding: calc(2 * var(--sq));
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.9 * var(--sq));
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+  animation: modalIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Header */
+.auth-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-modal-title {
+  font-family: var(--font-bebas, 'Bebas Neue', sans-serif);
+  font-size: clamp(22px, calc(2 * var(--sq)), 36px);
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  line-height: 1;
+}
+
+.auth-modal-close {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255,255,255,0.6);
+  transition: background 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+.auth-modal-close:hover { background: rgba(255,255,255,0.16); transform: scale(1.1); }
+.auth-modal-close svg { width: 14px; height: 14px; }
+
+/* OAuth row */
+.auth-oauth-row {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.5 * var(--sq));
+}
+
+.auth-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: calc(0.23 * var(--sq));
+  color: rgba(255,255,255,0.85);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  letter-spacing: 0.01em;
+}
+.auth-oauth-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.13);
+  border-color: rgba(255,255,255,0.22);
+  transform: translateY(-1px);
+}
+.auth-oauth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.auth-oauth-icon { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.25);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+/* Form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.6 * var(--sq));
+}
+
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+
+.auth-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+
+.auth-input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: calc(0.16 * var(--sq));
+  color: rgba(255,255,255,0.9);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.auth-input::placeholder { color: rgba(255,255,255,0.2); }
+.auth-input:focus {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.09);
+}
+
+/* Messages */
+.auth-msg {
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: calc(0.13 * var(--sq));
+  line-height: 1.4;
+}
+.auth-msg--error   { background: rgba(255, 80, 80, 0.15); color: #ff8080; border: 1px solid rgba(255,80,80,0.25); }
+.auth-msg--success { background: rgba(80, 255, 150, 0.1); color: #70eba0; border: 1px solid rgba(80,255,150,0.2); }
+
+/* Submit */
+.auth-submit {
+  background: var(--bg);
+  color: var(--card-bg);
+  border: none;
+  border-radius: calc(0.23 * var(--sq));
+  font-family: var(--font-bebas, 'Bebas Neue', sans-serif);
+  font-size: clamp(15px, calc(1 * var(--sq)), 20px);
+  letter-spacing: 0.06em;
+  padding: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  margin-top: calc(0.2 * var(--sq));
+}
+.auth-submit:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Toggle */
+.auth-toggle {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+}
+.auth-toggle-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s;
+}
+.auth-toggle-btn:hover { color: var(--bg); }
